@@ -1,0 +1,7 @@
+# Stažená data z inzerátů (obsahují texty a telefony prodejců) – nepublikovat
+state.json
+report.html
+
+__pycache__/
+*.pyc
+.venv/
