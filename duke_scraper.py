@@ -229,16 +229,21 @@ def L(**kw):
 
 
 def src_bazos():
+    """Bazoš: hledání v rubrice Motorky, stránkuje se přes odkaz „Další“ (počet na stránku se mění)."""
     out, seen = [], set()
-    url = "https://motorky.bazos.cz/"
-    for off in range(0, 400, 20):
-        params = {"hledat": "duke 390", "rubriky": "motorky", "hlokalita": "", "humkreis": "25",
-                  "cenaod": "50000", "cenado": "", "Submit": "Hledat", "kitx": "ne", "crp": off or ""}
-        b = soup(get(url, params=params).text)
-        items = b.select("div.inzeraty")
-        if not items:
+    root = "https://motorky.bazos.cz/"
+    url = root
+    params = {"hledat": "duke 390", "rubriky": "motorky", "hlokalita": "", "humkreis": "25",
+              "cenaod": "50000", "cenado": "", "Submit": "Hledat"}
+    for page in range(20):
+        try:
+            b = soup(get(url, params=params).text)
+        except Exception as e:
+            if page == 0:
+                raise
+            print(f"  Bazoš: stránka {page + 1} selhala ({e}), beru co mám", file=sys.stderr)
             break
-        for d in items:
+        for d in b.select("div.inzeraty"):
             a = d.select_one("h2.nadpis a")
             if not a:
                 continue
@@ -249,14 +254,16 @@ def src_bazos():
             lok = d.select_one(".inzeratylok")
             lok_parts = list(lok.stripped_strings) if lok else []
             img = d.select_one("img.obrazek")
-            out.append(L(source="Bazoš", id=m.group(1), url=urljoin(url, a["href"]),
+            out.append(L(source="Bazoš", id=m.group(1), url=urljoin(root, a["href"]),
                          title=a.get_text(strip=True),
                          price=num(d.select_one(".inzeratycena").get_text()) if d.select_one(".inzeratycena") else None,
                          location=lok_parts[0] if lok_parts else "",
                          image=img["src"] if img else "",
                          desc=d.select_one(".popis").get_text(" ", strip=True) if d.select_one(".popis") else ""))
-        if len(items) < 20:
+        nxt = next((a for a in b.select(".strankovani a[href]") if "Další" in a.get_text()), None)
+        if not nxt:
             break
+        url, params = urljoin(root, nxt["href"]), None
     return out
 
 
