@@ -35,6 +35,7 @@ Potřeba jen Python 3 s `requests` a `beautifulsoup4` (`pip install requests bea
 ```bash
 python3 duke_scraper.py --open     # stáhne inzeráty a otevře report
 python3 server.py                  # report na http://localhost:8390 s tlačítkem Aktualizovat
+./install-launcher.sh              # přidá „Duke 390 hlídač“ do menu aplikací (spustí server + otevře prohlížeč)
 ./install.sh                       # automatické spouštění každé 2 h (systemd --user) + notifikace
 ./install.sh --remove              # vypnutí
 ```
