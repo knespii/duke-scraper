@@ -9,6 +9,7 @@ import hashlib
 import json
 import math
 import re
+import socket
 import statistics
 import subprocess
 import sys
@@ -532,21 +533,51 @@ def eur_rate(state):
 
 
 # ---------------------------------------------------------------- hlavní běh
+def wait_for_network(tries=12, pause=10):
+    """Po probuzení z uspání / před připojením Wi-Fi chvíli počkat, než půjde internet."""
+    for i in range(tries):
+        try:
+            socket.getaddrinfo("motorky.bazos.cz", 443)
+            socket.getaddrinfo("www.kleinanzeigen.de", 443)
+            return True
+        except OSError:
+            if i == 0:
+                print("Čekám na připojení k internetu…", file=sys.stderr)
+            time.sleep(pause)
+    return False
+
+
 def run(notify=True, open_report=False):
+    if not wait_for_network():
+        print("Internet není dostupný – report nechávám beze změny.", file=sys.stderr)
+        sys.exit(1)
     state = load_state()
     rate = eur_rate(state)
     status, all_items = {}, []
+    last_items = state.setdefault("last_items", {})
 
     for name, fn, _ in SOURCES:
         try:
             items = fn()
             status[name] = {"ok": True, "found": len(items)}
-            all_items += items
+            last_items[name] = {"at": NOW.isoformat(), "items": items}
             print(f"[{name}] {len(items)} inzerátů")
         except Exception as e:
-            status[name] = {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]}
-            print(f"[{name}] CHYBA: {e}", file=sys.stderr)
+            err = f"{type(e).__name__}: {e}"[:200]
+            prev = last_items.get(name)
+            if prev:  # zdroj teď nejde -> použít poslední úspěšně stažená data
+                items = prev["items"]
+                status[name] = {"ok": False, "stale": prev["at"], "found": len(items), "error": err}
+            else:
+                items = []
+                status[name] = {"ok": False, "error": err}
+            print(f"[{name}] CHYBA: {e}" + (" – použita stará data" if prev else ""), file=sys.stderr)
             traceback.print_exc()
+        all_items += [dict(x) for x in items]
+
+    if not any(s_["ok"] for s_ in status.values()):
+        print("Žádný bazar neodpověděl – report nechávám beze změny.", file=sys.stderr)
+        sys.exit(1)
 
     # 1) hrubý filtr: musí to být Duke 390, rozumná cena, ne starší rok
     cand = []
@@ -782,6 +813,9 @@ def render(sections, status, rate, medians, total):
     for name, s in status.items():
         if s["ok"]:
             st.append(f'<span class="src ok">{escape(name)} ✓ {s["found"]}</span>')
+        elif s.get("stale"):
+            when = datetime.fromisoformat(s["stale"]).strftime("%-d. %-m. %H:%M")
+            st.append(f'<span class="src stale" title="{escape(s["error"])}">{escape(name)} ⚠ stará data z {when}</span>')
         else:
             st.append(f'<span class="src err" title="{escape(s["error"])}">{escape(name)} ✗ chyba</span>')
     med = " · ".join(f"{escape(g)}: {fmt_czk(m)}" for g, m in sorted(medians.items()) if g.isdigit())
@@ -811,7 +845,7 @@ def render(sections, status, rate, medians, total):
 *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}}
 header{{padding:22px 16px 10px;max-width:1300px;margin:auto}}h1{{margin:0;font-size:26px}}h1 span{{color:var(--acc)}}
 .sub{{color:var(--mut);margin:4px 0 10px}}.srcs{{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}}
-.src{{font-size:12px;padding:3px 8px;border-radius:99px;border:1px solid var(--line)}}.src.err{{color:var(--dmg);background:var(--dmg-bg);border-color:transparent}}
+.src{{font-size:12px;padding:3px 8px;border-radius:99px;border:1px solid var(--line)}}.src.stale{{color:var(--qs);background:var(--qs-bg);border-color:transparent}}.src.err{{color:var(--dmg);background:var(--dmg-bg);border-color:transparent}}
 nav{{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
 nav a,nav button{{font:inherit;font-size:13px;text-decoration:none;color:var(--ink);padding:5px 11px;border-radius:99px;background:var(--card);border:1px solid var(--line);cursor:pointer}}
 nav button.on{{background:var(--ink);color:var(--bg)}}
