@@ -44,6 +44,19 @@ Nastavení (max. doba jízdy, práh zajímavé ceny, jazyk překladu…) je naho
 
 `state.json` (cache a historie cen) a `report.html` se do gitu neukládají – obsahují texty inzerátů.
 
+## Android aplikace
+
+Složka `android/` – nativní aplikace v Kotlinu (Jetpack Compose), která dělá totéž přímo v telefonu:
+stejné bazary, stejná pravidla (ověřeno na 418 skutečných inzerátech proti Python verzi), sekce jako záložky,
+prodejci schovaní, překlad EN/originál, kontrola každé 3 h na pozadí a notifikace o nových inzerátech.
+
+```bash
+cd android && ./gradlew assembleRelease   # -> app/build/outputs/apk/release/app-release.apk
+```
+
+Podpisový klíč (`duke-release.jks`, `keystore.properties`) se do gitu neukládá – bez stejného klíče nejde
+aplikace aktualizovat přes již nainstalovanou verzi.
+
 ## Data
 
 `data/de_plz.tsv` – německá PSČ se souřadnicemi z [GeoNames](https://www.geonames.org/) (CC BY 4.0).

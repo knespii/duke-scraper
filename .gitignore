@@ -6,3 +6,6 @@ server.log
 __pycache__/
 *.pyc
 .venv/
+
+# sestavená aplikace
+*.apk

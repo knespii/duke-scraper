@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Duke" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#151514</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+    <color name="ic_bg">#FF6A00</color>
+    <color name="bike">#1D1D1B</color>
+</resources>
