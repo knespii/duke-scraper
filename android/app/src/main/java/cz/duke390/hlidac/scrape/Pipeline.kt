@@ -256,6 +256,7 @@ class Pipeline(private val ctx: Context) {
                 location = x.location, country = x.country, hours = hours[x.key], image = x.image, dealer = x.dealer,
                 exhaust = TextRules.detectExhaust(w.full), qs = TextRules.detectQs(w.full),
                 my2526 = (x.year ?: 0) >= 2025 || TextRules.mentionsMy2526(w.full) || x.isNewBike,
+                generation = TextRules.detectGen(w.full, x.year),
                 damaged = dmg, dealPct = pct, deal = pct != null && pct >= DEAL_THRESHOLD && !dmg,
                 isNew = h.firstSeen > newCutoff, priceDrop = if (drop > 0 && drop < w.czk * 0.5) drop else 0,
             )

@@ -141,6 +141,24 @@ object TextRules {
     private val MY2526 = Regex("(?:model\\w*(?: rok)?|\\bmy)\\W{0,3}(?:20)?(25|26|27)\\b")
     fun mentionsMy2526(text: String) = MY2526.containsMatchIn(norm(text))
 
+    // Gen 2 = MY2017–2023 (373 ccm), Gen 3 = od MY2024 (399 ccm). Text má přednost před rokem
+    // (skladová Gen 2 mohla být poprvé registrovaná až 2024).
+    private val GEN3 = Regex(
+        "\\bgen(?:eration|erace|eraci)?\\.? ?(?:3|iii)\\b|\\b(?:3|iii)\\.? ?gen(?:eration|erace|eraci)?\\b|" +
+            "third gen\\w*|3rd gen\\w*|neue generation|nov[aeyou]\\w* generac\\w*|\\b399 ?(?:ccm|cm3|cc)\\b"
+    )
+    private val GEN2 = Regex(
+        "\\bgen(?:eration|erace|eraci)?\\.? ?(?:2|ii)\\b|\\b(?:2|ii)\\.? ?gen(?:eration|erace|eraci)?\\b|" +
+            "second gen\\w*|2nd gen\\w*|star[aeyou]\\w* generac\\w*|alte generation|\\b373 ?(?:ccm|cm3|cc)\\b"
+    )
+
+    fun detectGen(text: String, year: Int?): Int? {
+        val t = norm(text)
+        val g3 = GEN3.containsMatchIn(t); val g2 = GEN2.containsMatchIn(t)
+        if (g3 != g2) return if (g3) 3 else 2
+        return year?.let { if (it <= 2023) 2 else 3 }
+    }
+
     private val DAMAGED = Regex("bourac|bourana|po nehode|unfall(?!frei)|defekt|motorschaden|poskozen")
     fun looksDamaged(text: String) = DAMAGED.containsMatchIn(norm(text))
 }

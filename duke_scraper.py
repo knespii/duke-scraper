@@ -187,6 +187,25 @@ DEALER_CUES = re.compile(
     r"mwst|finanzierung|inzahlungnahme|vorfuhr\w*|tageszulassung|neufahrzeug")
 
 
+# Gen 2 = modelové roky 2017–2023 (373 ccm), Gen 3 = od MY2024 (399 ccm). Text má přednost před rokem,
+# protože skladová Gen 2 mohla být poprvé registrovaná až v roce 2024.
+GEN3_RE = re.compile(r"\bgen(?:eration|erace|eraci)?\.? ?(?:3|iii)\b|\b(?:3|iii)\.? ?gen(?:eration|erace|eraci)?\b|"
+                     r"third gen\w*|3rd gen\w*|neue generation|nov[aeyou]\w* generac\w*|\b399 ?(?:ccm|cm3|cc)\b")
+GEN2_RE = re.compile(r"\bgen(?:eration|erace|eraci)?\.? ?(?:2|ii)\b|\b(?:2|ii)\.? ?gen(?:eration|erace|eraci)?\b|"
+                     r"second gen\w*|2nd gen\w*|star[aeyou]\w* generac\w*|alte generation|\b373 ?(?:ccm|cm3|cc)\b")
+
+
+def detect_gen(text, year):
+    """2 nebo 3 podle textu inzerátu, jinak podle roku (2023 -> 2, 2024+ -> 3); None, když nejde určit."""
+    t = norm(text)
+    g3, g2 = bool(GEN3_RE.search(t)), bool(GEN2_RE.search(t))
+    if g3 != g2:
+        return 3 if g3 else 2
+    if year is None:
+        return None
+    return 2 if year <= 2023 else 3
+
+
 def looks_like_dealer(text):
     return bool(DEALER_CUES.search(norm(text)))
 
@@ -649,6 +668,7 @@ def run(notify=True, open_report=False):
             x["dealer"] = looks_like_dealer(full)
         x["damaged"] = bool(re.search(r"bourac|bourana|po nehode|unfall(?!frei)|defekt|motorschaden|poskozen", n))
         x["gen"] = None if x["year"] is None else ("2023 (stará gen.)" if x["year"] == 2023 else "2024+ (nová gen.)")
+        x["generation"] = detect_gen(full, x["year"])
         final.append(x)
 
     # duplicity (stejný inzerát na TipMoto/Motoinzerce a Sbazaru apod.) – stejná cena + podobný název
@@ -795,10 +815,12 @@ def card(x):
                     f'<div class="{cls} og">{short(orig) if cls == "desc" else escape(orig)}</div>')
         return f'<div class="{cls}">{short(orig) if cls == "desc" else escape(orig)}</div>'
     img = f'<img src="{escape(x["image"])}" loading="lazy" referrerpolicy="no-referrer" alt="">' if x["image"] else '<div class="noimg">bez fotky</div>'
-    return f'''<a class="card" href="{escape(x["url"])}" target="_blank" rel="noopener" data-country="{x["country"]}">
+    g = x.get("generation")
+    gen = f'<span class="gen g{g}">Gen {g}</span>' if g else ""
+    return f'''<a class="card" href="{escape(x["url"])}" target="_blank" rel="noopener" data-country="{x["country"]}" data-gen="{g or ""}">
   <div class="ph">{img}</div>
   <div class="body">
-    <div class="top"><span class="yr{" unk" if not x["year"] else ""}">{x["year"] or "rok ?"}</span><span class="price">{fmt_czk(x["price_czk"])}</span>{orig}</div>
+    <div class="top"><span class="yr{" unk" if not x["year"] else ""}">{x["year"] or "rok ?"}</span>{gen}<span class="price">{fmt_czk(x["price_czk"])}</span>{orig}</div>
     {both(x["title"], x.get("title_tr"), "title")}
     <div class="meta">{meta}</div>
     <div class="loc">{flag} {escape(x["location"] or "")}{dist} · {escape(x["source"])}</div>
@@ -860,6 +882,8 @@ h2{{margin:0;font-size:20px}}.cnt{{color:var(--mut);font-weight:400}}summary p{{
 .top{{display:flex;align-items:baseline;gap:8px}}.price{{font-size:21px;font-weight:700}}.orig{{color:var(--mut);font-size:13px}}
 .yr{{align-self:center;font-weight:700;font-size:15px;padding:2px 9px;border-radius:7px;background:var(--ink);color:var(--bg)}}
 .yr.unk{{background:var(--line);color:var(--mut)}}
+.gen{{align-self:center;font-weight:700;font-size:12px;padding:2px 7px;border-radius:7px;border:1.5px solid var(--line);color:var(--mut)}}
+.gen.g3{{border-color:var(--acc);color:var(--acc)}}
 .title{{font-weight:600}}.meta,.loc{{color:var(--mut);font-size:13px}}
 .badges{{display:flex;flex-wrap:wrap;gap:5px;margin:3px 0}}.b{{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--line)}}
 .b.new{{background:var(--new-bg);color:var(--new)}}.b.deal,.b.drop{{background:var(--deal-bg);color:var(--deal)}}
@@ -879,7 +903,7 @@ body:not(.orig) .og,body.orig .tr{{display:none}}
 <div class="sub">Mediány: {med or "zatím málo dat"}</div>
 <div class="srcs">{"".join(st)}</div>
 </header>
-<nav>{"".join(nav)}<button data-f="all" class="on">Vše</button><button data-f="CZ">🇨🇿 ČR</button><button data-f="DE">🇩🇪 DE</button><button id="lang" title="Přepnout mezi překladem a originálem">🌐 EN</button><button id="dltoggle">🏪 Ukázat prodejce</button><button id="refresh" class="hide">🔄 Aktualizovat</button></nav>
+<nav>{"".join(nav)}<button data-f="all" class="on">Vše</button><button data-f="CZ">🇨🇿 ČR</button><button data-f="DE">🇩🇪 DE</button><button data-g="all" class="on">Gen 2+3</button><button data-g="2">Gen 2 (≤2023)</button><button data-g="3">Gen 3 (2024+)</button><button id="lang" title="Přepnout mezi překladem a originálem">🌐 EN</button><button id="dltoggle">🏪 Ukázat prodejce</button><button id="refresh" class="hide">🔄 Aktualizovat</button></nav>
 <main>{"".join(body) or "<p>Nic nenalezeno.</p>"}
 <footer><p>Ručně: {links}</p><p>Vzdálenost v Německu je odhad podle PSČ (vzdušná čára × 1,27 při ~100 km/h). Data PSČ © GeoNames (CC BY 4.0).</p></footer>
 </main>
@@ -902,10 +926,14 @@ function setLang(orig){{document.body.classList.toggle('orig',orig);lang.textCon
  try{{localStorage.setItem('dukeLangOrig',orig?'1':'')}}catch(e){{}}}}
 try{{setLang(localStorage.getItem('dukeLangOrig')==='1')}}catch(e){{}}
 lang.onclick=()=>setLang(!document.body.classList.contains('orig'));
-document.querySelectorAll('nav button[data-f]').forEach(b=>b.onclick=()=>{{
- document.querySelectorAll('nav button[data-f]').forEach(x=>x.classList.toggle('on',x===b));
- const f=b.dataset.f;document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',f!=='all'&&c.dataset.country!==f));
-}});
+const flt={{f:'all',g:'all'}};
+function applyFlt(){{document.querySelectorAll('.card').forEach(c=>c.classList.toggle('hide',
+ (flt.f!=='all'&&c.dataset.country!==flt.f)||(flt.g!=='all'&&c.dataset.gen!==flt.g)))}}
+['f','g'].forEach(k=>document.querySelectorAll(`nav button[data-${{k}}]`).forEach(b=>b.onclick=()=>{{
+ document.querySelectorAll(`nav button[data-${{k}}]`).forEach(x=>x.classList.toggle('on',x===b));
+ flt[k]=b.dataset[k];try{{localStorage.setItem('dukeGen',flt.g)}}catch(e){{}}applyFlt();
+}}));
+try{{const g=localStorage.getItem('dukeGen');if(g&&g!=='all')document.querySelector(`nav button[data-g="${{g}}"]`)?.click()}}catch(e){{}}
 </script>
 </body></html>'''
 

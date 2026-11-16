@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class RefreshState(val running: Boolean = false, val progress: String? = null, val error: String? = null)
-data class Prefs(val country: String = "all", val showDealers: Boolean = false, val original: Boolean = false, val tab: Int = 0)
+data class Prefs(val country: String = "all", val showDealers: Boolean = false, val original: Boolean = false, val tab: Int = 0, val gen: Int = 0)
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val sp = app.getSharedPreferences("ui", Context.MODE_PRIVATE)
@@ -31,7 +31,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val report: StateFlow<Report?> = _report.asStateFlow()
 
     private val _prefs = MutableStateFlow(
-        Prefs(sp.getString("country", "all")!!, sp.getBoolean("dealers", false), sp.getBoolean("orig", false), sp.getInt("tab", 0))
+        Prefs(sp.getString("country", "all")!!, sp.getBoolean("dealers", false), sp.getBoolean("orig", false), sp.getInt("tab", 0), sp.getInt("gen", 0))
     )
     val prefs: StateFlow<Prefs> = _prefs.asStateFlow()
 
@@ -76,6 +76,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setPrefs(p: Prefs) {
         _prefs.value = p
         sp.edit().putString("country", p.country).putBoolean("dealers", p.showDealers)
-            .putBoolean("orig", p.original).putInt("tab", p.tab).apply()
+            .putBoolean("orig", p.original).putInt("tab", p.tab).putInt("gen", p.gen).apply()
     }
 }

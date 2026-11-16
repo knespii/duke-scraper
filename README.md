@@ -26,7 +26,7 @@ Dál:
 - inzeráty od **prodejců / salonů** jsou v každé sekci schované v rozklikávacím bloku,
 - titulky a popisy se **překládají do angličtiny** (přepínač 🌐 EN / originál),
 - štítky NOVÉ, zlevněno, podezřele levné, možná poškozená,
-- filtr 🇨🇿 / 🇩🇪.
+- filtr 🇨🇿 / 🇩🇪 a filtr generace: Gen 2 (373 ccm, do MY2023) / Gen 3 (399 ccm, od MY2024) – podle textu inzerátu (Gen 3, 399 ccm…), jinak podle roku; generace je i na každé kartě.
 
 ## Spuštění
 

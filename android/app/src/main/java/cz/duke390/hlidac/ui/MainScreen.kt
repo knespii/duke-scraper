@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -144,14 +145,14 @@ fun MainScreen(vm: MainViewModel) {
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun ReportList(r: Report, prefs: Prefs, refresh: RefreshState, onPrefs: (Prefs) -> Unit, open: (String) -> Unit) {
-    val visible = r.sections.map { s -> s.copy(cards = s.cards.filter { prefs.country == "all" || it.country == prefs.country }) }
+    val visible = r.sections.map { s -> s.copy(cards = s.cards.filter { (prefs.country == "all" || it.country == prefs.country) && (prefs.gen == 0 || it.generation == prefs.gen) }) }
     val tab = prefs.tab.coerceIn(0, visible.lastIndex)
     val sec = visible[tab]
     val private = sec.cards.filter { !it.dealer }
     val dealers = sec.cards.filter { it.dealer }
     var dealersOpen by rememberSaveable(tab) { mutableStateOf(prefs.showDealers) }
     val listState = rememberLazyListState()
-    LaunchedEffect(tab, prefs.country) { listState.scrollToItem(0) }
+    LaunchedEffect(tab, prefs.country, prefs.gen) { listState.scrollToItem(0) }
 
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 32.dp), modifier = Modifier.fillMaxSize()) {
         stickyHeader(key = "tabs") {
@@ -173,6 +174,9 @@ private fun ReportList(r: Report, prefs: Prefs, refresh: RefreshState, onPrefs: 
                     ) {
                         listOf("all" to "Vše", "CZ" to "🇨🇿 ČR", "DE" to "🇩🇪 DE").forEach { (k, label) ->
                             FilterChip(selected = prefs.country == k, onClick = { onPrefs(prefs.copy(country = k)) }, label = { Text(label) })
+                        }
+                        listOf(0 to "Gen 2+3", 2 to "Gen 2 (≤2023)", 3 to "Gen 3 (2024+)").forEach { (g, label) ->
+                            FilterChip(selected = prefs.gen == g, onClick = { onPrefs(prefs.copy(gen = g)) }, label = { Text(label) })
                         }
                         FilterChip(
                             selected = prefs.showDealers,
@@ -275,6 +279,15 @@ private fun ListingCard(c: Card, original: Boolean, open: (String) -> Unit) {
                         .background(if (c.year != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceVariant)
                         .padding(horizontal = 8.dp, vertical = 2.dp),
                 )
+                c.generation?.let { g ->
+                    Spacer(Modifier.width(6.dp))
+                    val col = if (g == 3) Color(0xFFFF6A00) else MaterialTheme.colorScheme.onSurfaceVariant
+                    Text(
+                        "Gen $g", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = col,
+                        modifier = Modifier.border(1.5.dp, col.copy(alpha = 0.7f), RoundedCornerShape(7.dp))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                }
                 Spacer(Modifier.width(10.dp))
                 Text(fmtCzk(c.priceCzk), fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 c.priceEur?.let {

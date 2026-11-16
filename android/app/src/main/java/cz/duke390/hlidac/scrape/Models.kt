@@ -46,6 +46,7 @@ data class Card(
     val exhaust: String? = null,
     val qs: Boolean = false,
     val my2526: Boolean = false,
+    val generation: Int? = null,
     val damaged: Boolean = false,
     val dealPct: Double? = null,
     val deal: Boolean = false,
